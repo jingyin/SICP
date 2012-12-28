@@ -10,6 +10,7 @@
 (provide identity)
 (provide inc)
 (provide prime?)
+(provide fib)
 
 (define (average x y) (/ (+ x y) 2.0))
 (define (square x) (* x x))
@@ -40,3 +41,11 @@
   (define smallest-divisor (find-divisor 2))
   (and (not (= n 1)) (= smallest-divisor n)))
 ;(trace prime?)
+
+(define (fib n)
+  ; b is fib(count)
+  (define (iter a b count)
+    (if (= count n)
+        b
+        (iter (+ a b) a (+ count 1))))
+  (iter 1 0 0))
