@@ -4,10 +4,6 @@
 (require "list-util.rkt")
 (require "numerical.rkt")
 
-; flattens lists of lists
-(define (flatmap proc seq)
-  (accumulate append '() (map proc seq)))
-
 (define (prime-sum? pair)
   (prime? (+ (car pair) (cadr pair))))
 
