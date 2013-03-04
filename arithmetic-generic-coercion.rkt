@@ -4,8 +4,9 @@
 
 (require "numerical.rkt")
 (require "getput.rkt")
-(require "generic.rkt")
+(require "generic-coercion.rkt")
 (require "tagged-obj.rkt")
+(require "coercion-table.rkt")
 (require racket/trace)
 
 (define (add x y) (apply-generic 'add x y))
@@ -190,6 +191,9 @@
 (define (imag-part z) (apply-generic 'imag-part z))
 (define (magnitude z) (apply-generic 'magnitude z))
 (define (angle z) (apply-generic 'angle z))
+
+(define (scheme-number->complex n)
+  (make-complex-from-real-imag (contents n) 0))
 
 (for-each (lambda (x) (x)) (list install-scheme-number-package install-rational-package install-complex-package))
 
