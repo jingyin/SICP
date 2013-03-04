@@ -195,6 +195,14 @@
 (define (scheme-number->complex n)
   (make-complex-from-real-imag (contents n) 0))
 
+(put-coercion 'scheme-number 'complex scheme-number->complex)
+
+; Louis Reasoner modification
+(define (scheme-number->scheme-number n) n)
+(define (complex->complex z) z)
+(put-coercion 'scheme-number 'scheme-number scheme-number->scheme-number)
+(put-coercion 'complex 'complex complex->complex)
+
 (for-each (lambda (x) (x)) (list install-scheme-number-package install-rational-package install-complex-package))
 
 (magnitude (make-complex-from-real-imag 3 4))
@@ -214,3 +222,5 @@
 (=zero? (make-complex-from-mag-ang 0 10))
 (=zero? (make-complex-from-mag-ang 10 10))
 (exp 4 5)
+; exp not defined for complex
+(exp (make-complex-from-mag-ang 3 4) (make-complex-from-mag-ang 3 4))
