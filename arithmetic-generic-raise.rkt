@@ -57,8 +57,7 @@
     (make-rat (* (numer x) (numer y))
               (* (denom x) (denom y))))
   (define (div-rat x y)
-    (make-rat (* (numer x) (denom y))
-              (* (denom x) (numer y))))
+    (make-rat (* (numer x) (denom y)) (* (denom x) (numer y))))
   (define (equ? x y)
     (= (* (numer x) (denom y))
        (* (numer y) (denom x))))
@@ -229,9 +228,18 @@
 (exp (make-scheme-number 4) (make-scheme-number 5))
 
 (define tr (make-scheme-number 4))
-tr
 (raise tr)
 (raise (raise tr))
 (raise (raise (raise tr)))
 (raise (raise (raise (raise tr))))
 
+((get 'raise (list (type-tag (make-scheme-number 3)))) (contents (make-scheme-number 3)))
+(add (make-scheme-number 3) (make-rational 4 5))
+(add (make-rational 3 1) (make-rational 4 5))
+
+(mul (make-rational 3 4) (make-real .8))
+(div (make-real 10) (make-rational 5 2))
+(sub (make-scheme-number 2) (make-real 4.0))
+(div (make-complex-from-real-imag 10 20) (make-real 10))
+(div (make-complex-from-real-imag 10 20) (make-complex-from-real-imag 10 0))
+(div (make-complex-from-real-imag 10 20) (make-rational 20 2))
