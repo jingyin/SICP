@@ -138,9 +138,8 @@
   (define (imag-part z) (apply-generic 'imag-part z))
   (define (magnitude z) (apply-generic 'magnitude z))
   (define (angle z) (apply-generic 'angle z))
-  (define (equ? x y) (if (eq? (type-tag x) (type-tag y))
-                         (apply-generic 'equ? x y)
-                         false))
+  (define (equ? x y) (and (= (real-part x) (real-part y))
+                          (= (imag-part x) (imag-part y))))
   (define (=zero? x) (apply-generic '=zero? x))
 
   (define (make-from-real-imag x y)
