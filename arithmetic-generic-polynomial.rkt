@@ -206,18 +206,12 @@
                        (sub (angle z1) (angle z2))))
 
   (define (tag z) (attach-tag 'complex z))
-  (put 'add '(complex complex)
-       (lambda (z1 z2) (tag (add-complex z1 z2))))
-  (put 'sub '(complex complex)
-       (lambda (z1 z2) (tag (sub-complex z1 z2))))
-  (put 'mul '(complex complex)
-       (lambda (z1 z2) (tag (mul-complex z1 z2))))
-  (put 'div '(complex complex)
-       (lambda (z1 z2) (tag (div-complex z1 z2))))
-  (put 'make-from-real-imag 'complex
-       (lambda (x y) (tag (make-from-real-imag x y))))
-  (put 'make-from-mag-ang 'complex
-       (lambda (r a) (tag (make-from-mag-ang r a))))
+  (put 'add '(complex complex) (compose tag add-complex))
+  (put 'sub '(complex complex) (compose tag sub-complex))
+  (put 'mul '(complex complex) (compose tag mul-complex))
+  (put 'div '(complex complex) (compose tag div-complex))
+  (put 'make-from-real-imag 'complex (compose tag make-from-real-imag))
+  (put 'make-from-mag-ang 'complex (compose tag make-from-mag-ang))
   (put 'real-part '(complex) real-part)
   (put 'imag-part '(complex) imag-part)
   (put 'magnitude '(complex) magnitude)
@@ -238,7 +232,14 @@
 (define (magnitude z) (apply-generic 'magnitude z))
 (define (angle z) (apply-generic 'angle z))
 
+; two representations for polynomial
+; sparse -- only contains terms with non-zero coefficients
+; 'polynomial . 'x . 'sparse
+; dense -- contains non-zero highest order terms followed by all lower-order terms
+; 'polynomial . 'x . 'dense
+; generalize on the term list
 (define (install-polynomial-package)
+  ; common routine to both representations
   (define (make-poly variable term-list)
     (cons variable term-list))
   (define (variable p) (car p))
@@ -246,10 +247,6 @@
   (define (variable? x) (symbol? x))
   (define (same-variable? x y)
     (and (variable? x) (variable? y) (eq? x y)))
-  (define (adjoin-term term term-list)
-    (if (=zero? (coeff term))
-        term-list
-        (cons term term-list)))
   (define (the-empty-termlist) '())
   (define (first-term term-list) (car term-list))
   (define (rest-terms term-list) (cdr term-list))
@@ -258,71 +255,82 @@
   (define (order term) (car term))
   (define (coeff term) (cadr term))
   (define (tag p) (attach-tag 'polynomial p))
-  (define (add-terms L1 L2)
-    (cond ((empty-termlist? L1) L2)
-          ((empty-termlist? L2) L1)
-          (else
-           (let ((t1 (first-term L1)) (t2 (first-term L2)))
-             (cond ((> (order t1) (order t2))
-                    (adjoin-term
-                     t1 (add-terms (rest-terms L1) L2)))
-                   ((< (order t1) (order t2))
-                    (adjoin-term
-                     t2 (add-terms L1 (rest-terms L2))))
-                   (else
-                    (adjoin-term
-                     (make-term (order t1)
-                                (add (coeff t1) (coeff t2)))
-                     (add-terms (rest-terms L1)
-                                (rest-terms L2)))))))))
-  (define (mul-terms L1 L2)
-    (if (empty-termlist? L1)
-        (the-empty-termlist)
-        (add-terms (mul-term-by-all-terms (first-term L1) L2)
-                   (mul-terms (rest-terms L1) L2))))
-  (define (mul-term-by-all-terms t1 L)
-    (if (empty-termlist? L)
-        (the-empty-termlist)
-        (let ((t2 (first-term L)))
-          (adjoin-term
-           (make-term (+ (order t1) (order t2))
-                      (mul (coeff t1) (coeff t2)))
-           (mul-term-by-all-terms t1 (rest-terms L))))))
-  (define (add-poly p1 p2)
-    (if (same-variable? (variable p1) (variable p2))
-        (make-poly (variable p1)
-                   (add-terms (term-list p1)
-                              (term-list p2)))
-        (error "Polys not in same var - ADD-POLY"
-               (list p1 p2))))
-  (define (sub-poly p1 p2)
-    (if (same-variable? (variable p1) (variable p2))
-        (add-poly p1 (negate-poly p2))
-        (error "Polys not in same var - SUB-POLY"
-               (list p1 p2))))
-  (define (mul-poly p1 p2)
-    (if (same-variable? (variable p1) (variable p2))
-        (make-poly (variable p1)
-                   (mul-terms (term-list p1)
-                              (term-list p2)))
-        (error "Polys not in same var - MUL-POLY"
-               (list p1 p2))))
-  (define (negate-terms L)
-    (map (lambda (t)
-          (make-term (order t) (negate (coeff t)))) L))
-  (define (negate-poly p)
-    (make-poly (variable p)
-               (negate-terms (term-list p))))
-  (put 'add '(polynomial polynomial) (lambda (p1 p2) (tag (add-poly p1 p2))))
-  (put 'sub '(polynomial polynomial) (lambda (p1 p2) (tag (sub-poly p1 p2))))
-  (put 'mul '(polynomial polynomial) (lambda (p1 p2) (tag (mul-poly p1 p2))))
-  (put 'negate '(polynomial) negate-poly)
-  (put '=zero? '(polynomial) (lambda (p) (empty-termlist? (term-list p))))
-  (put 'make 'polynomial (lambda (var terms) (tag (make-poly var terms))))
+
+  (define (install-sparse-package)
+    (define (tag p) (attach-tag 'sparse p))
+    (define (adjoin-term term-list)
+      (if (=zero? (coeff term))
+          term-list
+          (cons term term-list)))
+    (define (add-terms L1 L2)
+      (cond ((empty-termlist? L1) L2)
+            ((empty-termlist? L2) L1)
+            (else
+             (let ((t1 (first-term L1)) (t2 (first-term L2)))
+               (cond ((> (order t1) (order t2))
+                      (adjoin-term
+                       t1 (add-terms (rest-terms L1) L2)))
+                     ((< (order t1) (order t2))
+                      (adjoin-term
+                       t2 (add-terms L1 (rest-terms L2))))
+                     (else
+                      (adjoin-term
+                       (make-term (order t1)
+                                  (add (coeff t1) (coeff t2)))
+                       (add-terms (rest-terms L1)
+                                  (rest-terms L2)))))))))
+    (define (mul-terms L1 L2)
+      (if (empty-termlist? L1)
+          (the-empty-termlist)
+          (add-terms (mul-term-by-all-terms (first-term L1) L2)
+                     (mul-terms (rest-terms L1) L2))))
+    (define (mul-term-by-all-terms t1 L)
+      (if (empty-termlist? L)
+          (the-empty-termlist)
+          (let ((t2 (first-term L)))
+            (adjoin-term
+             (make-term (+ (order t1) (order t2))
+                        (mul (coeff t1) (coeff t2)))
+             (mul-term-by-all-terms t1 (rest-terms L))))))
+    (define (negate-terms L)
+      (map (lambda (t)
+            (make-term (order t) (negate (coeff t)))) L))
+    (put 'add '(sparse sparse) (compose tag add-terms))
+    (put 'sub '(sparse sparse) (compose tag sub-terms))
+    (put 'mul '(sparse sparse) (compose tag mul-terms))
+    (put 'negate '(sparse) (compose tag negate-terms))
+    (put '=zero? '(sparse) empty-termlist?)
+    'done)
+
+  (define (install-dense-package)
+    (define (add-terms L1 L2))
+    (define (sub-terms L1 L2))
+    (define (mul-terms L1 L2))
+    (define (negate-terms L)
+      (map (lambda (t)
+            (make-term (order t) (negate (coeff t)))) L))
+    (put 'add '(dense dense) (compose tag add-terms))
+    (put 'sub '(dense dense) (compose tag sub-terms))
+    (put 'mul '(dense dense) (compose tag mul-terms))
+    (put 'negate '(dense) (compose tag negate-terms))
+    'done)
+
+  (install-sparse-package)
+  (install-dense-package)
+
+  (define (add-terms L1 L2) (apply-generic 'add L1 L2))
+  (define (mul-terms L1 L2) (apply-generic 'mul L1 L2))
+  (define (sub-terms L1 L2) (apply-generic 'sub L1 L2))
+  (define (negate-terms L) (apply-generic 'negate L))
+  (define (=zero? L) (apply-generic '=zero? L))
+
   'done)
 
-(define (make-polynomial var terms)
-  ((get 'make 'polynomial) var terms))
+(define (make-polynomial-sparse var terms)
+  ((get 'make-from-sparse 'polynomial) var terms))
+
+(define (make-polynomial-dense var terms)
+  ((get 'make-from-dense 'polynomial) var terms))
 
 (for-each (lambda (x) (x)) (list install-scheme-number-package install-rational-package install-real-package install-complex-package install-polynomial-package))
 
@@ -375,17 +383,17 @@
 (drop (make-real 4.0))
 (drop complex)
 
-(define poly-x (make-polynomial 'x (list (list 2 (make-rational 4 5))
-                                   (list 1 (make-scheme-number 3))
-                                   (list 0 (make-real 2.4)))))
-(define poly-y (make-polynomial 'x (list (list 3 (make-real 4))
-                                         (list 2 (make-rational 2 3))
-                                         (list 1 (make-scheme-number 3)))))
+(define poly-x (make-polynomial-sparse 'x (list (list 2 (make-rational 4 5))
+                                          (list 1 (make-scheme-number 3))
+                                          (list 0 (make-real 2.4)))))
+(define poly-y (make-polynomial-sparse 'x (list (list 3 (make-real 4))
+                                          (list 2 (make-rational 2 3))
+                                          (list 1 (make-scheme-number 3)))))
 poly-x
 poly-y
 (add poly-x poly-y)
 (mul poly-y poly-x)
 (=zero? poly-x)
-(=zero? (make-polynomial 'x '()))
+(=zero? (make-polynomial-sparse 'x '()))
 (sub poly-x poly-y)
 (sub poly-x poly-x)
