@@ -236,8 +236,10 @@
 ; sparse -- only contains terms with non-zero coefficients
 ; 'polynomial . 'x . 'sparse
 ; dense -- contains non-zero highest order terms followed by all lower-order terms
+; when a polynomial is dense, we don't have to keep the order (it'd be implicit)
 ; 'polynomial . 'x . 'dense
 ; generalize on the term list
+; when determining which representation to pick, we compute
 (define (install-polynomial-package)
   ; common routine to both representations
   (define (make-poly variable term-list)
@@ -292,6 +294,8 @@
              (make-term (+ (order t1) (order t2))
                         (mul (coeff t1) (coeff t2)))
              (mul-term-by-all-terms t1 (rest-terms L))))))
+    (define (sub-terms L1 L2)
+      (add-terms L1 (negate-terms L2)))
     (define (negate-terms L)
       (map (lambda (t)
             (make-term (order t) (negate (coeff t)))) L))
@@ -303,8 +307,11 @@
     'done)
 
   (define (install-dense-package)
+    (define (tag t) (attach-tag 'dense t))
+    (define (remove-trailing-zero
     (define (add-terms L1 L2))
-    (define (sub-terms L1 L2))
+    (define (sub-terms L1 L2)
+      (add-terms L1 (negate-terms L2)))
     (define (mul-terms L1 L2))
     (define (negate-terms L)
       (map (lambda (t)
@@ -322,8 +329,36 @@
   (define (mul-terms L1 L2) (apply-generic 'mul L1 L2))
   (define (sub-terms L1 L2) (apply-generic 'sub L1 L2))
   (define (negate-terms L) (apply-generic 'negate L))
-  (define (=zero? L) (apply-generic '=zero? L))
+  (define (terms=zero? L) (apply-generic '=zero? L))
 
+  (define (add-poly p1 p2)
+    (if (same-variable? (variable p1) (variable p2))
+        (make-poly (variable p1)
+                   (add-terms (term-list p1)
+                              (term-list p2)))))
+        (error "Non-identical variable -- ADD-POLY"))
+  (define (sub-poly p1 p2)
+    (if (same-variable? (variable p1) (variable p2))
+        (make-poly (variable p1)
+                   (sub-terms (term-list p1)
+                              (term-list p2))))
+        (error "Non-identical variable -- SUB-POLY")))
+  (define (mul-poly p1 p2)
+    (if (same-variable? (variable p1) (variable p2))
+        (make-poly (variable p1)
+                   (mul-terms (term-list p1)
+                              (term-list p2))))
+        (error "Non-identical variable -- MUL-POLY")))
+  (define (negate p)
+    (make-poly (variable p) (negate-terms (term-list p))))
+  (define (=zero? p)
+    (terms=zero? (term-list p)))
+
+  (put 'add '(polynomial polynomial) (compose tag add-poly))
+  (put 'sub '(polynomial polynomial) (compose tag sub-poly))
+  (put 'mul '(polynomial polynomial) (compose tag mul-poly))
+  (put 'negate '(polynomial) (compose tag negate))
+  (put '=zero? '(polynomial) (compose tag =zero?))
   'done)
 
 (define (make-polynomial-sparse var terms)
