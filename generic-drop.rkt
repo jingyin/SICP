@@ -25,6 +25,7 @@
                             (t2->t1 (apply-generic op a1 (t2->t1 a2)))
                             (else error "No method for these types" (list op type-tags))))))
               (error "No method for these types - APPLY-GENERIC" (list op type-tags)))))))
+;(trace apply-generic)
 
 ; return a function that raises a1 to a2
 ; if such a coercion is not possible, return false

@@ -310,6 +310,9 @@
     (put 'make 'sparse (compose tag (lambda (terms) terms)))
     'done)
 
+  (define (make-sparse-terms terms)
+    ((get 'make 'sparse) terms))
+
   (define (install-dense-package)
     (define (tag t) (attach-tag 'dense t))
     (define zero-terms (list (make-scheme-number 0)))
@@ -358,21 +361,21 @@
             (else (compact-terms (accumulate op '()
                                              (zip (reverse L2) (enumerate-interval 0 (- (length L2) 1))))))))
     (define (negate-terms L) (map negate L))
-    ;(define (dense->sparse terms) #f)
+    (define (dense->sparse terms)
+      (filter (lambda (term) (not (=zero? (coeff term))))
+              (zip (reverse (enumerate-interval 0 (- (length terms) 1)))
+                   terms)))
     (put 'add '(dense dense) (compose tag add-terms))
     (put 'sub '(dense dense) (compose tag sub-terms))
     (put 'mul '(dense dense) (compose tag mul-terms))
     (put 'negate '(dense) (compose tag negate-terms))
     (put '=zero? '(dense) terms=zero?)
-    ;(put 'raise '(dense) (compose make-sparse-terms dense->sparse))
+    (put 'raise '(dense) (compose make-sparse-terms dense->sparse))
     (put 'make 'dense (compose tag (lambda (terms) terms)))
     'done)
 
   (install-sparse-package)
   (install-dense-package)
-
-  (define (make-sparse-terms terms)
-    ((get 'make 'sparse) terms))
 
   (define (make-dense-terms terms)
     ((get 'make 'dense) terms))
@@ -500,3 +503,5 @@ poly-yd
 (=zero? (add poly-yd poly-yd))
 (mul poly-xd poly-yd)
 (mul poly-xd poly-xd)
+(add poly-xd poly-y)
+(mul poly-y poly-xd)
